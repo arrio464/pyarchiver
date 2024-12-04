@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import logging
 import sys
 
@@ -66,3 +67,8 @@ def setup_logging(level: int = logging.DEBUG, filename: str = None):
         logger.addHandler(file_handler)
 
     return logger
+
+
+def calculate_checksum(file_path: str) -> str:
+    with open(file_path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:8]

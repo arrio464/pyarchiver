@@ -1,10 +1,10 @@
 import os
-import sys
+import re
 from typing import Optional
 
 import py7zr
 
-from utils import setup_logging
+from utils import calculate_checksum, setup_logging
 
 logger = setup_logging()
 
@@ -17,21 +17,28 @@ class PaZipExtractor:
         :param archive_path: The path to the .7z archive.
         :param extract_to: The directory to extract the archive to (optional).
         """
+        assert os.path.isfile(
+            archive_path
+        ), f"Archive file '{archive_path}' does not exist."
+        assert extract_to is None or os.path.isdir(
+            extract_to
+        ), f"Output directory '{extract_to}' does not exist."
+        pattern = re.match(
+            r"^([\w_-]+)_(\d{8}\d{6}[+-]\d{4})_([a-fA-F0-9]{8})\.7z$", archive_path
+        )
+        assert pattern is not None, f"Invalid archive name: '{archive_path}'"
+
         self.archive_path = archive_path
         self.extract_to = extract_to or os.getcwd()
+        self.extract_to = os.path.join(self.extract_to, *(pattern.groups()))
+        assert calculate_checksum(archive_path) == pattern.group(
+            3
+        ), f"Checksum mismatch for '{archive_path}'"
 
     def extract_archive(self):
         """
         Extract the contents of the .7z archive to the specified directory.
         """
-        if not os.path.exists(self.archive_path):
-            logger.error(f"The archive '{self.archive_path}' does not exist.")
-            return
-
-        # if not self.archive_path.endswith(".7z"):
-        #     logger.error(f"The file '{self.archive_path}' is not a .7z archive.")
-        #     return
-
         # Ensure the output directory exists
         if not os.path.exists(self.extract_to):
             os.makedirs(self.extract_to)
@@ -46,7 +53,7 @@ class PaZipExtractor:
                 f"Archive '{self.archive_path}' successfully extracted to '{self.extract_to}'."
             )
         except Exception as e:
-            logger.error(f"Error extracting the archive: {e}")
+            logger.error(f"Error extracting the archive: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
@@ -62,16 +69,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if not os.path.isfile(args.archive):
-        logger.error(f"The specified path '{args.archive}' is not a valid file.")
-        sys.exit(1)
-
-    if os.path.exists(args.output):
-        logger.error(f"The specified output directory '{args.output}' already exists.")
-        sys.exit(1)
-
     try:
         extractor = PaZipExtractor(args.archive, extract_to=args.output)
         extractor.extract_archive()
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}", exc_info=True)
