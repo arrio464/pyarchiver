@@ -12,7 +12,7 @@ logger = setup_logging()
 
 
 class PaZipCompressor:
-    def __init__(self, folder: str, output_dir: Optional[str] = None):
+    def __init__(self, folder: str, output_dir: Optional[str] = None) -> None:
         """
         Initialize the compressor with the directory to compress and an optional output directory.
 
@@ -78,7 +78,7 @@ class PaZipCompressor:
 
         return compress_files
 
-    def compress_folder(self):
+    def compress_folder(self) -> None | str:
         """
         Compress the directory recursively into a 7z archive, ignoring files/folders based on the .paignore rules.
         """
@@ -92,20 +92,23 @@ class PaZipCompressor:
             with py7zr.SevenZipFile(tmp_archive_path, "w") as archive:
                 for file_path in files_to_compress:
                     logger.info(f"Compressing '{file_path}'...")
+                    if os.path.islink(file_path):
+                        logger.warning(
+                            f"Symbolic links are not fully tested, may cause problems: {file_path}"
+                        )
                     arcname = os.path.relpath(file_path, self.folder)
                     archive.write(file_path, arcname=arcname)
 
-            output_archive_path = (
-                f"{folder_name}_{timestamp}_{calculate_checksum(tmp_archive_path)}.7z"
+            output_archive_path = os.path.join(
+                self.output_dir,
+                f"{folder_name}_{timestamp}_{calculate_checksum(tmp_archive_path)}.7z",
             )
-            os.rename(
-                tmp_archive_path, os.path.join(self.output_dir, output_archive_path)
-            )
+            os.rename(tmp_archive_path, output_archive_path)
 
             logger.success(
                 f"Folder '{self.folder}' compressed successfully to '{output_archive_path}'."
             )
-
+            return output_archive_path
         except Exception as e:
             logger.error(f"Error compressing directory: {e}", exc_info=True)
             if os.path.isfile(tmp_archive_path):

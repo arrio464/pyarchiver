@@ -10,7 +10,7 @@ logger = setup_logging()
 
 
 class PaZipExtractor:
-    def __init__(self, archive_path: str, extract_to: Optional[str] = None):
+    def __init__(self, archive_path: str, extract_to: Optional[str] = None) -> None:
         """
         Initialize the extractor with the path to the .7z archive and an optional directory to extract to.
 
@@ -24,7 +24,8 @@ class PaZipExtractor:
             extract_to
         ), f"Output directory '{extract_to}' does not exist."
         pattern = re.match(
-            r"^([\w_-]+)_(\d{8}\d{6}[+-]\d{4})_([a-fA-F0-9]{8})\.7z$", archive_path
+            r"^([\w_-]+)_(\d{8}\d{6}[+-]\d{4})_([a-fA-F0-9]{8})\.7z$",
+            os.path.basename(archive_path),
         )
         assert pattern is not None, f"Invalid archive name: '{archive_path}'"
 
@@ -35,7 +36,7 @@ class PaZipExtractor:
             3
         ), f"Checksum mismatch for '{archive_path}'"
 
-    def extract_archive(self):
+    def extract_archive(self) -> None | str:
         """
         Extract the contents of the .7z archive to the specified directory.
         """
@@ -52,8 +53,10 @@ class PaZipExtractor:
             logger.success(
                 f"Archive '{self.archive_path}' successfully extracted to '{self.extract_to}'."
             )
+            return self.extract_to
         except Exception as e:
             logger.error(f"Error extracting the archive: {e}", exc_info=True)
+            return
 
 
 if __name__ == "__main__":
